@@ -81,8 +81,6 @@ class ParticleFilter(Node):
         self.a_thresh = math.pi/6       # the amount of angular movement before performing an update
 
         # TODO: define additional constants if needed
-        
-        self.pose_pub = self.create_publisher(PoseWithCovarianceStamped, '/pf_pose', 10)
 
         # pose_listener responds to selection of a new approximate robot location (for instance using rviz)
         self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.update_initial_pose, 10)
@@ -185,19 +183,18 @@ class ParticleFilter(Node):
         # first make sure that the particle weights are normalized
         self.normalize_particles()
         x, y, theta = 0.0, 0.0, 0.0
+        # Creates a weighted average of the particles. This works only because the particle weights are normalized
         for particle in self.particle_cloud:
             x += particle.x * particle.w
             y += particle.y * particle.w
             theta += particle.theta * particle.w
             
-        # TODO: assign the latest pose into self.robot_pose as a geometry_msgs.Pose object
-        # just to get started we will fix the robot's pose to always be at the origin
+        # Assigns the robot_pose to be the above weighted average of al the particles. Currently this does not really take into account theta
         self.robot_pose = Particle(x = x, y = y, theta = theta, w = 1.0).as_pose()
         if hasattr(self, 'odom_pose'):
             self.transform_helper.fix_map_to_odom_transform(self.robot_pose,
                                                             self.odom_pose)
         else:
-            print("NOOOOO")
             self.get_logger().warn("Can't set map->odom transform since no odom data received")
 
     def update_particles_with_odom(self):
@@ -219,7 +216,7 @@ class ParticleFilter(Node):
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        # TODO: modify particles using delta
+        # Adds the odometery change in position to each particle, with some scaled random noise
         for particle in self.particle_cloud:
             rx, ry, rt = np.random.normal(0, 0.33, size=3)
             particle.x += 0.1 * rx + delta[0]
@@ -228,7 +225,8 @@ class ParticleFilter(Node):
             
     def generate_random_particle(self):
         ((xl, xu), (yl, yu)) = self.occupancy_field.get_obstacle_bounding_box()
-        
+        # Picks random values from points on the map, uniformally. We chose uniform as opposed to normal distrubution since we 
+        # decided that we wanted as much variability as possible
         rx = np.random.uniform(low = xl, high = xu)
         ry = np.random.uniform(low = yl, high = yu)
         rt = np.random.uniform(low=0, high=2 * np.pi)
@@ -249,13 +247,14 @@ class ParticleFilter(Node):
         """
         # make sure the distribution is normalized
         self.normalize_particles()
-        resample_pop = round(self.n_particles * 0.5)
+        resample_pop = round(self.n_particles * 0.75)
+        # Picks .75 * n_particles based on the weights of the particle cloud
         self.particle_cloud = draw_random_sample(self.particle_cloud, [p.w for p in self.particle_cloud], resample_pop)
-
+        # For the rest of the particles in the particle cloud, we send them out randomly
         for _ in range(self.n_particles - resample_pop):
             particle = self.generate_random_particle()
             self.particle_cloud.append(particle)     
-                   
+        # Adds scaled random noise to each particle to help converge
         for particle in self.particle_cloud:
             rx, ry, rt = np.random.normal(0, 0.33, size=3)
             particle.x += rx
@@ -274,9 +273,14 @@ class ParticleFilter(Node):
         ((xl, xu), (yl, yu)) = self.occupancy_field.get_obstacle_bounding_box()
         for particle in self.particle_cloud:
             particle_min_distance = self.occupancy_field.get_closest_obstacle_distance(particle.x, particle.y)
+            # The error is based on the absolute value of difference in the closest object
             error = math.fabs(scan_min_distance - particle_min_distance)
+            # Weight is 1 / error + epsilon. Need to add some very small value to account for the fact
+            # that the error could be 0
             particle.w = (1.0 / (error + 1e-9))
+            # Redundant check, just to be absolutely sure the weights are a real, finite number
             if(np.isnan(particle.w)):
+                # We don't want to set a weight of exactly 0 since that would mess up some of the normalization
                 particle.w = 1e-9
             
         self.normalize_particles()
@@ -295,7 +299,7 @@ class ParticleFilter(Node):
         if xy_theta is None:
             xy_theta = self.transform_helper.convert_pose_to_xy_and_theta(self.odom_pose)
         self.particle_cloud: list[Particle] = []
-        
+        # Each particle in the particle cloud is sampled from a normal dustrubution around the initial point
         for _ in range(self.n_particles):
             x = float(np.random.normal(xy_theta[0], 1.0))
             y = float(np.random.normal(xy_theta[1], 1.0))
@@ -309,18 +313,20 @@ class ParticleFilter(Node):
 
     def normalize_particles(self):
         sum_weights = sum([p.w for p in self.particle_cloud])
-        
+        # Check to make sure that weights have been assigned at all
         if(sum_weights == 0.0):
             for particle in self.particle_cloud:
                 particle.w = 1.0 / self.n_particles
             return
-        
+        # Sets the weight of each particle based on the sum of all the weights
+        # We do all but the last particle, and make sure to add up the normalized weight
         normalized_sum = 0.0
         for i in range(len(self.particle_cloud) - 1):
             particle = self.particle_cloud[i]
             particle.w /= sum_weights
             normalized_sum += particle.w
-            
+        # The last particle is 1 - sum of all the weights of the rest of the particles
+        # This ensures that the weights of the particle cloud add up to eactly 1
         self.particle_cloud[-1].w = 1.0 - normalized_sum
         # print(sum([p.w for p in self.particle_cloud]))
 
