@@ -19,6 +19,10 @@ One design decision we had to make was determining if we wanted to send out rand
 
 In this step, we also had to decide the percentage of particles that we were distributing randomly. We started off with 50% of the particle cloud being randomly distributed particles, and quickly turned that percentage down to 25%. We found that this was a nice balance between converging on the real position of the robot and verifying that we are not converging on an incorrect position.
 
+## Localization Output
+[Screencast from 2025-10-19 20-20-42.webm](https://github.com/user-attachments/assets/c31b1361-b38a-46f9-a59b-67ff540a1a6d)
+
+
 ## Challenges
 
 The biggest challenge we had was while working with rviz. When running the bag file and the MAC map in rviz, the neato visual was not appearing on screen. Our particles would populate within the MAC map and when we echoed the /odom topic to verify that the bag file was playing and the Neato was moving. This made it difficult to understand the accuracy of our pose estimate since we couldn’t visually see where the Neato was in reference to the map.
