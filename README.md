@@ -22,6 +22,9 @@ In this step, we also had to decide the percentage of particles that we were dis
 ## Localization Output
 [Screencast from 2025-10-19 20-20-42.webm](https://github.com/user-attachments/assets/c31b1361-b38a-46f9-a59b-67ff540a1a6d)
 
+## Limitations
+
+Our particle filter has some limitations. The biggest being the update speed. We can see in the above video that the particles are slow to react to Neato changes in position. This leads to convergence that seems like it is always one step behind the actual position of the Neato. This is primarily due to the many loop iterations we are doing inside of each simulation loop, which greatly reduces the efficency of the filter. 
 
 ## Challenges
 
