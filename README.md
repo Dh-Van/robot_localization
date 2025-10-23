@@ -37,3 +37,5 @@ If we had more time we would want to determine a method to incorporate more than
 
 ## Interesting Robotics Lessons
 One thing we learned was how different it is to start a robotic programming project from starter code rather than from scratch. While it is really helpful to have a basis of code that we know works and can be a great starting point for us, if we don’t take the time to fully understand all the functions and properties that have already been created we risk creating contradictory or significantly less efficient functions and processes. Additionally, working off a starter code made us switch our mindset from “how do we make a particle function that works?” to “how do we make this code work”, which we thought was an interesting shift.
+
+Once we understood the codebase, we were better able to focus on implementing the particle filter. Throughout the process however, debugging was difficult since we never were sure if it was our code that wasn't working or we didn't use the given code in the intended way.
